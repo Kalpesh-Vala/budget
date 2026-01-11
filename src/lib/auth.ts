@@ -25,7 +25,7 @@ export async function setAuthCookie(userId: string, email: string) {
   const cookieStore = await cookies();
   cookieStore.set('auth-token', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_APP_URL?.startsWith('https'),
     sameSite: 'lax',
     maxAge: JWT_EXPIRY,
     path: '/',

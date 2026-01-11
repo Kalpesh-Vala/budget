@@ -18,29 +18,6 @@ export default function RegisterPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-
-  useEffect(() => {
-    // Check if user is already logged in
-    checkIfLoggedIn();
-  }, []);
-
-  const checkIfLoggedIn = async () => {
-    try {
-      const response = await fetch('/api/auth/me');
-      const data = await response.json();
-
-      if (data.authenticated) {
-        // User is already logged in, redirect to dashboard
-        router.push('/dashboard');
-      }
-    } catch (error) {
-      console.error('Auth check error:', error);
-    } finally {
-      setIsCheckingAuth(false);
-    }
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -50,7 +27,6 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -69,41 +45,40 @@ export default function RegisterPage() {
           password: formData.password,
           confirmPassword: formData.confirmPassword,
         }),
+        credentials: 'include',
       });
 
       const data = await response.json();
 
       if (!response.ok) {
         setError(data.error || 'Registration failed');
+        setLoading(false);
         return;
       }
 
-      setSuccess('Registration successful! Redirecting to dashboard...');
-      setTimeout(() => router.push('/dashboard'), 1000);
+      console.log('Register successful, redirecting to dashboard');
+      
+      // Redirect to dashboard using window.location for instant redirect
+      // Add delay to ensure cookie is set
+      setTimeout(() => {
+        console.log('Executing redirect to /dashboard');
+        window.location.href = '/dashboard';
+      }, 500);
     } catch (err) {
       setError('An error occurred. Please try again.');
       console.error(err);
-    } finally {
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center p-4">
-      {isCheckingAuth ? (
-        <Card className="w-full max-w-md">
-          <CardContent className="flex items-center justify-center py-8">
-            <p className="text-gray-500">Checking authentication...</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Create Account</CardTitle>
           </CardHeader>
           <CardContent>
             {error && <Alert type="error" message={error} onClose={() => setError('')} />}
-            {success && <Alert type="success" message={success} />}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input
@@ -158,7 +133,6 @@ export default function RegisterPage() {
             </div>
           </CardContent>
         </Card>
-      )}
     </div>
   );
 }

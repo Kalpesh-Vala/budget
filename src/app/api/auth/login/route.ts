@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db/connection';
 import User from '@/lib/models/User';
-import { setAuthCookie } from '@/lib/auth';
+import * as jwt from 'jsonwebtoken';
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,9 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Set auth cookie
-    await setAuthCookie(user._id.toString(), user.email);
-
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         message: 'Login successful',
         user: {
@@ -53,6 +51,23 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 }
     );
+
+    // Set the auth token cookie on the response
+    const token = jwt.sign(
+      { userId: user._id.toString(), email: user.email },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: 7 * 24 * 60 * 60 }
+    );
+
+    response.cookies.set('auth-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_APP_URL?.startsWith('https'),
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60,
+      path: '/',
+    });
+
+    return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
