@@ -2,6 +2,25 @@
 
 A modern, responsive, secure budget tracking web application built with **Next.js, MongoDB, and Tailwind CSS**.
 
+## License
+
+This project is licensed under the **MIT License** - see [LICENSE](./LICENSE) file for details.
+
+For more information about the license terms and options, see [LICENSE_GUIDE.md](./LICENSE_GUIDE.md).
+
+**Copyright (c) 2026 Budget Tracker Project. All rights reserved.**
+
+## Features
+
+- 🔐 Secure authentication with JWT tokens (7-day persistence)
+- 💰 Track daily expenses with multiple categories
+- 📊 Analytics and statistics dashboard
+- 📅 Monthly cost tracking and budgeting
+- 🎯 Category-wise budget management
+- 📱 Fully responsive design
+- 🌙 Dark mode support
+- 🔄 Real-time data updates
+
 ## Getting Started
 
 First, run the development server:

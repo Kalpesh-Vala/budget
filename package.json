@@ -2,6 +2,8 @@
   "name": "budget-tracker",
   "version": "1.0.0",
   "description": "Budget Tracker - Full Stack Web App",
+  "author": "Budget Tracker Project",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "dev": "next dev",

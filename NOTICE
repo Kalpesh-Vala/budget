@@ -1,0 +1,61 @@
+BUDGET TRACKER APPLICATION
+Copyright Notice and License Information
+
+================================================================================
+PROJECT: Budget Tracker
+VERSION: 1.0.0
+LICENSE: MIT License
+COPYRIGHT: Copyright (c) 2026 Budget Tracker Project. All rights reserved.
+================================================================================
+
+This software and all its components are protected by copyright laws.
+
+LICENSE TERMS:
+The Budget Tracker project is distributed under the MIT License. This means:
+
+1. YOU MAY:
+   - Use this software for any purpose
+   - Modify the source code
+   - Distribute the software
+   - Include it in your projects
+
+2. YOU MUST:
+   - Include the copyright notice and license in any distribution
+   - Include the LICENSE file with the software
+   - State significant changes made to the code
+
+3. YOU CANNOT:
+   - Claim ownership of this software
+   - Hold the authors liable for any damages
+   - Remove or modify the original license
+
+For the full license text, see the LICENSE file included with this project.
+
+THIRD-PARTY COMPONENTS:
+This project includes components from the following open-source projects:
+- Next.js (MIT License)
+- React (MIT License)
+- MongoDB Node Driver (Apache 2.0)
+- Mongoose (MIT License)
+- Tailwind CSS (MIT License)
+- And other dependencies listed in package.json
+
+All third-party software is used under their respective licenses.
+
+DISCLAIMER:
+THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+FOR MORE INFORMATION:
+- See LICENSE file for the complete MIT License text
+- See LICENSE_GUIDE.md for detailed license information
+- See README.md for project information
+
+================================================================================
+Date: January 2026
+================================================================================
