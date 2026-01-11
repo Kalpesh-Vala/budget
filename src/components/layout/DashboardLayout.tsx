@@ -4,6 +4,7 @@ import React, { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { InstallPrompt } from '@/components/common/InstallPrompt';
 
 interface LayoutProps {
   children: ReactNode;
@@ -41,6 +42,7 @@ export function DashboardLayout({ children }: LayoutProps) {
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+      <InstallPrompt />
       {/* Sidebar - Desktop */}
       {!isMobile && (
         <aside

@@ -7,14 +7,9 @@ import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { Alert } from '@/components/common/Alert';
 import { formatCurrency, getCurrentMonth, formatMonthLong } from '@/utils/formatting';
-import { groupExpensesByCategory, calculateTotal } from '@/utils/calculations';
+import { groupExpensesByCategory, calculateTotal, ExpenseData } from '@/utils/calculations';
 
-interface Expense {
-  _id: string;
-  date: string;
-  category: string;
-  amount: number;
-}
+interface Expense extends ExpenseData {}
 
 interface MonthlyCost {
   _id: string;
