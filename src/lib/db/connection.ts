@@ -25,9 +25,30 @@ export async function connectDB() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-    };
+      // Connection pooling settings for better performance
+      maxPoolSize: 10,
+      minPoolSize: 5,
+      maxIdleTimeMS: 45000,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      // Optimize query execution
+      retryWrites: true,
+      retryReads: true,
+    } as any;
 
     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
+      // Set up event listeners for monitoring
+      mongoose.connection.on('error', (err) => {
+        console.error('MongoDB connection error:', err);
+        cached.promise = null; // Reset promise on error
+      });
+
+      mongoose.connection.on('disconnected', () => {
+        console.warn('MongoDB disconnected');
+        cached.conn = null;
+        cached.promise = null;
+      });
+
       return mongoose;
     });
   }
@@ -40,4 +61,13 @@ export async function connectDB() {
   }
 
   return cached.conn;
+}
+
+// Graceful shutdown
+export async function disconnectDB() {
+  if (cached.conn) {
+    await cached.conn.disconnect();
+    cached.conn = null;
+    cached.promise = null;
+  }
 }

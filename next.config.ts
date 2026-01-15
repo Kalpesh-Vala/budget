@@ -5,6 +5,13 @@ import withPWA from "next-pwa";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   turbopack: {},
+  // Optimize images with valid Next.js 16 format
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+  },
+  // Production source maps disabled for faster builds
+  productionBrowserSourceMaps: false,
 };
 
 const withPWAConfig = withPWA({
@@ -13,16 +20,19 @@ const withPWAConfig = withPWA({
   register: true,
   skipWaiting: false,
   runtimeCaching: [
-    // Cache API responses
+    // Cache API responses with NetworkFirst strategy
     {
       urlPattern: /^https:\/\/.*\/api\/.*$/,
       handler: "NetworkFirst",
       options: {
         cacheName: "api-cache",
-        networkTimeoutSeconds: 10,
+        networkTimeoutSeconds: 5, // Faster timeout for better UX
         expiration: {
-          maxEntries: 50,
+          maxEntries: 100,
           maxAgeSeconds: 5 * 60, // 5 minutes
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
         },
       },
     },
@@ -45,7 +55,7 @@ const withPWAConfig = withPWA({
       options: {
         cacheName: "image-cache",
         expiration: {
-          maxEntries: 100,
+          maxEntries: 150,
           maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
         },
       },
@@ -56,7 +66,7 @@ const withPWAConfig = withPWA({
       handler: "NetworkFirst",
       options: {
         cacheName: "html-cache",
-        networkTimeoutSeconds: 10,
+        networkTimeoutSeconds: 5,
         expiration: {
           maxEntries: 100,
           maxAgeSeconds: 60 * 60 * 24, // 24 hours

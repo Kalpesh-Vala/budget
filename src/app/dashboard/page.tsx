@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/common/Card';
 import { Alert } from '@/components/common/Alert';
@@ -22,61 +23,75 @@ interface StatData {
   monthlyTotal: number;
 }
 
+// Lazy load chart components
+const RecentTransactionsList = dynamic(() => import('@/components/dashboard/RecentTransactionsList'), {
+  loading: () => <div className="text-gray-500">Loading transactions...</div>,
+  ssr: false,
+});
+
 export default function Dashboard() {
   const router = useRouter();
   const [stats, setStats] = useState<StatData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isAuthChecking, setIsAuthChecking] = useState(true);
 
+  // Single combined fetch that checks auth and gets stats in one call
   useEffect(() => {
-    // Check authentication first
-    checkAuthAndFetchStats();
+    fetchDashboardData();
   }, []);
 
-  const checkAuthAndFetchStats = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
-      // First check if user is authenticated
-      const authResponse = await fetch('/api/auth/me');
-      const authData = await authResponse.json();
+      setLoading(true);
+      
+      // Make both requests in parallel
+      const [authResponse, statsResponse] = await Promise.all([
+        fetch('/api/auth/me', { cache: 'no-store' }),
+        fetch('/api/expenses/stats', { cache: 'no-store' }),
+      ]);
 
+      // Check authentication
+      const authData = await authResponse.json();
       if (!authData.authenticated) {
-        // Not authenticated, redirect to login
         router.push('/login');
         return;
       }
 
-      // User is authenticated, fetch stats
-      fetchStats();
-    } catch (err) {
-      console.error('Auth check error:', err);
-      router.push('/login');
-    } finally {
-      setIsAuthChecking(false);
-    }
-  };
-
-  const fetchStats = async () => {
-    try {
-      const response = await fetch('/api/expenses/stats');
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || 'Failed to fetch dashboard data');
+      // Get stats
+      const statsData = await statsResponse.json();
+      if (!statsResponse.ok) {
+        setError(statsData.error || 'Failed to fetch dashboard data');
         return;
       }
 
-      setStats(data);
+      setStats(statsData);
       setError('');
     } catch (err) {
+      console.error('Dashboard fetch error:', err);
       setError('An error occurred while loading dashboard');
-      console.error(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
-  if (isAuthChecking || loading) {
+  // Memoize computed values to prevent unnecessary recalculations
+  const topCategories = useMemo(() => {
+    return stats?.categoryWise.slice(0, 5) || [];
+  }, [stats?.categoryWise]);
+
+  const expenseTypes = useMemo(() => {
+    return stats?.typeWise || [];
+  }, [stats?.typeWise]);
+
+  const recentTransactions = useMemo(() => {
+    return stats?.recent || [];
+  }, [stats?.recent]);
+
+  const handleCloseAlert = useCallback(() => {
+    setError('');
+  }, []);
+
+  if (loading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-96">
@@ -95,7 +110,7 @@ export default function Dashboard() {
           <p className="text-gray-600 dark:text-gray-400">Welcome back! Here's your financial overview.</p>
         </div>
 
-        {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+        {error && <Alert type="error" message={error} onClose={handleCloseAlert} />}
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -109,14 +124,14 @@ export default function Dashboard() {
           <Card>
             <div className="text-center">
               <p className="text-gray-600 dark:text-gray-400 mb-2">Transactions</p>
-              <p className="text-4xl font-bold text-green-600">{stats?.recent.length || 0}</p>
+              <p className="text-4xl font-bold text-green-600">{recentTransactions.length}</p>
             </div>
           </Card>
 
           <Card>
             <div className="text-center">
               <p className="text-gray-600 dark:text-gray-400 mb-2">Categories</p>
-              <p className="text-4xl font-bold text-purple-600">{stats?.categoryWise.length || 0}</p>
+              <p className="text-4xl font-bold text-purple-600">{topCategories.length}</p>
             </div>
           </Card>
         </div>
@@ -128,11 +143,11 @@ export default function Dashboard() {
               <CardTitle>Top Categories</CardTitle>
             </CardHeader>
             <CardContent>
-              {stats?.categoryWise.length === 0 ? (
+              {topCategories.length === 0 ? (
                 <p className="text-gray-500">No expenses yet</p>
               ) : (
                 <div className="space-y-4">
-                  {stats?.categoryWise.slice(0, 5).map((cat) => (
+                  {topCategories.map((cat) => (
                     <div key={cat._id} className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">{cat._id}</p>
@@ -151,11 +166,11 @@ export default function Dashboard() {
               <CardTitle>Expense Types</CardTitle>
             </CardHeader>
             <CardContent>
-              {stats?.typeWise.length === 0 ? (
+              {expenseTypes.length === 0 ? (
                 <p className="text-gray-500">No expenses yet</p>
               ) : (
                 <div className="space-y-4">
-                  {stats?.typeWise.map((type) => (
+                  {expenseTypes.map((type) => (
                     <div key={type._id} className="flex items-center justify-between">
                       <p className="font-medium capitalize">{type._id}</p>
                       <p className="font-semibold text-blue-600">{formatCurrency(type.total)}</p>
@@ -167,17 +182,17 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Recent Transactions */}
+        {/* Recent Transactions - Lazy loaded */}
         <Card>
           <CardHeader>
             <CardTitle>Recent Transactions</CardTitle>
           </CardHeader>
           <CardContent>
-            {stats?.recent.length === 0 ? (
+            {recentTransactions.length === 0 ? (
               <p className="text-gray-500 mb-4">No transactions yet</p>
             ) : (
               <div className="space-y-3">
-                {stats?.recent.map((expense) => (
+                {recentTransactions.map((expense) => (
                   <div key={expense._id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded">
                     <div>
                       <p className="font-medium">{expense.description}</p>
@@ -192,7 +207,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Call to Action */}
-        {stats?.recent.length === 0 && (
+        {recentTransactions.length === 0 && (
           <Card className="bg-blue-50 dark:bg-blue-900">
             <div className="text-center">
               <p className="text-gray-700 dark:text-gray-300 mb-4">Start tracking your expenses to see insights</p>

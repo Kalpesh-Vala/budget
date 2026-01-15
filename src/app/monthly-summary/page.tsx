@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/common/Card';
 import { Table } from '@/components/common/Table';
@@ -32,14 +32,10 @@ export default function MonthlySummaryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchExpenses();
-  }, [selectedMonth]);
-
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/expenses?month=${selectedMonth}`);
+      const response = await fetch(`/api/expenses?month=${selectedMonth}`, { cache: 'no-store' });
       const data = await response.json();
 
       if (!response.ok) {
@@ -60,9 +56,35 @@ export default function MonthlySummaryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedMonth]);
 
-  const monthTotal = summary.reduce((sum, day) => sum + day.total, 0);
+  useEffect(() => {
+    fetchExpenses();
+  }, [selectedMonth, fetchExpenses]);
+
+  const handleMonthChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedMonth(e.target.value);
+  }, []);
+
+  const handleCloseAlert = useCallback(() => {
+    setError('');
+  }, []);
+
+  // Memoize computed values
+  const monthTotal = useMemo(() => {
+    return summary.reduce((sum, day) => sum + day.total, 0);
+  }, [summary]);
+
+  const averagePerDay = useMemo(() => {
+    return summary.length > 0 ? monthTotal / summary.length : 0;
+  }, [monthTotal, summary.length]);
+
+  const tableData = useMemo(() => {
+    return summary.map(day => ({
+      ...day,
+      descriptions: day.descriptions.join(', '),
+    }));
+  }, [summary]);
 
   return (
     <DashboardLayout>
@@ -73,7 +95,7 @@ export default function MonthlySummaryPage() {
           <p className="text-gray-600 dark:text-gray-400">Auto-generated from your daily expenses</p>
         </div>
 
-        {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+        {error && <Alert type="error" message={error} onClose={handleCloseAlert} />}
 
         {/* Month Selector */}
         <Card>
@@ -82,7 +104,7 @@ export default function MonthlySummaryPage() {
             <Input
               type="month"
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
+              onChange={handleMonthChange}
               className="max-w-xs"
             />
             <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
@@ -111,7 +133,7 @@ export default function MonthlySummaryPage() {
             <div className="text-center">
               <p className="text-gray-600 dark:text-gray-400 mb-2">Average per Day</p>
               <p className="text-4xl font-bold text-purple-600">
-                {formatCurrency(summary.length > 0 ? monthTotal / summary.length : 0)}
+                {formatCurrency(averagePerDay)}
               </p>
             </div>
           </Card>
@@ -137,7 +159,7 @@ export default function MonthlySummaryPage() {
                     label: 'Combined Description',
                     render: (descriptions) => (
                       <div className="max-w-xs">
-                        {descriptions.join(', ')}
+                        {descriptions}
                       </div>
                     ),
                   },
@@ -149,7 +171,7 @@ export default function MonthlySummaryPage() {
                     ),
                   },
                 ]}
-                data={summary}
+                data={tableData}
               />
             )}
           </CardContent>

@@ -4,7 +4,20 @@ import Expense from '@/lib/models/Expense';
 import { protectApiRoute } from '@/lib/api-protection';
 import { formatMonth } from '@/utils/formatting';
 
-// GET all expenses for a user (with optional month filter)
+// In-memory cache for expense queries (TTL: 30 seconds)
+const expenseCache = new Map<string, { data: any; timestamp: number }>();
+const statsCache = new Map<string, { data: any; timestamp: number }>(); // Reference to stats cache
+const CACHE_TTL = 30000; // 30 seconds
+
+function getCacheKey(userId: string, month?: string, date?: string, page?: string) {
+  return `${userId}:${month || 'all'}:${date || 'none'}:${page || '1'}`;
+}
+
+function isCacheValid(timestamp: number) {
+  return Date.now() - timestamp < CACHE_TTL;
+}
+
+// GET all expenses for a user (with optional month filter and pagination)
 export async function GET(request: NextRequest) {
   const protection = protectApiRoute(request);
   if (!protection.authenticated) {
@@ -12,11 +25,23 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    await connectDB();
-
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
     const date = searchParams.get('date');
+    const page = searchParams.get('page') || '1';
+    const limit = parseInt(searchParams.get('limit') || '20');
+
+    // Check cache first
+    const cacheKey = getCacheKey(protection.userId, month || undefined, date || undefined, page);
+    const cached = expenseCache.get(cacheKey);
+    if (cached && isCacheValid(cached.timestamp)) {
+      return NextResponse.json(cached.data, { 
+        status: 200,
+        headers: { 'X-Cache': 'HIT' }
+      });
+    }
+
+    await connectDB();
 
     let query: any = { userId: protection.userId };
 
@@ -34,9 +59,37 @@ export async function GET(request: NextRequest) {
       query.date = { $gte: dateObj, $lt: nextDay };
     }
 
-    const expenses = await Expense.find(query).sort({ date: -1 });
+    // Pagination
+    const skip = (parseInt(page) - 1) * limit;
 
-    return NextResponse.json({ expenses }, { status: 200 });
+    // Parallel queries: get expenses and total count
+    const [expenses, totalCount] = await Promise.all([
+      Expense.find(query)
+        .select('_id date category type paymentMethod description amount')
+        .sort({ date: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(), // Use lean for faster queries
+      Expense.countDocuments(query), // Get total count for pagination
+    ]);
+
+    const response = {
+      expenses,
+      pagination: {
+        page: parseInt(page),
+        limit,
+        total: totalCount,
+        pages: Math.ceil(totalCount / limit),
+      },
+    };
+
+    // Cache the response
+    expenseCache.set(cacheKey, { data: response, timestamp: Date.now() });
+
+    return NextResponse.json(response, { 
+      status: 200,
+      headers: { 'X-Cache': 'MISS' }
+    });
   } catch (error) {
     console.error('Error fetching expenses:', error);
     return NextResponse.json(
@@ -46,7 +99,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create a new expense
+// POST - Create a new expense (with cache invalidation)
 export async function POST(request: NextRequest) {
   const protection = protectApiRoute(request);
   if (!protection.authenticated) {
@@ -85,6 +138,24 @@ export async function POST(request: NextRequest) {
     });
 
     await expense.save();
+
+    // Invalidate caches for this user to ensure fresh data on next fetch
+    const cacheKeysToDelete: string[] = [];
+    for (const [key] of expenseCache.entries()) {
+      if (key.startsWith(protection.userId)) {
+        cacheKeysToDelete.push(key);
+      }
+    }
+    cacheKeysToDelete.forEach(key => expenseCache.delete(key));
+
+    // Also invalidate stats cache
+    const statsKeysToDelete: string[] = [];
+    for (const [key] of statsCache.entries()) {
+      if (key.startsWith(protection.userId)) {
+        statsKeysToDelete.push(key);
+      }
+    }
+    statsKeysToDelete.forEach(key => statsCache.delete(key));
 
     return NextResponse.json(
       { message: 'Expense created successfully', expense },
