@@ -31,6 +31,9 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalExpenses, setTotalExpenses] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -47,13 +50,14 @@ export default function ExpensesPage() {
   });
 
   useEffect(() => {
-    fetchExpenses();
+    setCurrentPage(1); // Reset to page 1 when month changes
+    fetchExpenses(1);
   }, [selectedMonth]);
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = async (page: number = 1) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/expenses?month=${selectedMonth}`);
+      const response = await fetch(`/api/expenses?month=${selectedMonth}&page=${page}&limit=10`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -62,6 +66,9 @@ export default function ExpensesPage() {
       }
 
       setExpenses(data.expenses || []);
+      setCurrentPage(data.pagination?.page || 1);
+      setTotalPages(data.pagination?.pages || 1);
+      setTotalExpenses(data.pagination?.total || 0);
       setError('');
     } catch (err) {
       setError('An error occurred while loading expenses');
@@ -169,7 +176,7 @@ export default function ExpensesPage() {
 
   const todayExpenses = filterExpensesByDate(expenses, new Date(selectedDate));
   const dayTotal = calculateTotal(todayExpenses);
-  const monthTotal = calculateTotal(expenses);
+  const pageTotal = calculateTotal(expenses); // Total for current page
 
   return (
     <DashboardLayout>
@@ -273,8 +280,8 @@ export default function ExpensesPage() {
           <Card>
             <div className="text-center">
               <p className="text-gray-600 dark:text-gray-400 mb-2">Month's Total</p>
-              <p className="text-4xl font-bold text-green-600">{formatCurrency(monthTotal)}</p>
-              <p className="text-sm text-gray-500 mt-2">{expenses.length} transactions</p>
+              <p className="text-4xl font-bold text-green-600">{formatCurrency(pageTotal)}</p>
+              <p className="text-sm text-gray-500 mt-2">Page {currentPage}: {expenses.length} expenses (Total: {totalExpenses})</p>
             </div>
           </Card>
         </div>
@@ -302,7 +309,9 @@ export default function ExpensesPage() {
         {/* Expenses Table */}
         <Card>
           <CardHeader>
-            <CardTitle>All Expenses</CardTitle>
+            <CardTitle>
+              All Expenses {totalExpenses > 0 && `(${totalExpenses} total)`}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -310,31 +319,73 @@ export default function ExpensesPage() {
             ) : expenses.length === 0 ? (
               <p className="text-gray-500">No expenses yet. Add one to get started!</p>
             ) : (
-              <Table
-                columns={[
-                  { key: 'date', label: 'Date', render: (val) => formatDate(val) },
-                  { key: 'category', label: 'Category' },
-                  { key: 'type', label: 'Type', render: (val) => val.charAt(0).toUpperCase() + val.slice(1) },
-                  { key: 'paymentMethod', label: 'Method' },
-                  { key: 'description', label: 'Description' },
-                  { key: 'amount', label: 'Amount', render: (val) => formatCurrency(val) },
-                  {
-                    key: 'actions',
-                    label: 'Actions',
-                    render: (_, row: Expense) => (
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="secondary" onClick={() => handleEdit(row)}>
-                          Edit
-                        </Button>
-                        <Button size="sm" variant="danger" onClick={() => handleDelete(row._id)}>
-                          Delete
-                        </Button>
+              <>
+                <Table
+                  columns={[
+                    { key: 'date', label: 'Date', render: (val) => formatDate(val) },
+                    { key: 'category', label: 'Category' },
+                    { key: 'type', label: 'Type', render: (val) => val.charAt(0).toUpperCase() + val.slice(1) },
+                    { key: 'paymentMethod', label: 'Method' },
+                    { key: 'description', label: 'Description' },
+                    { key: 'amount', label: 'Amount', render: (val) => formatCurrency(val) },
+                    {
+                      key: 'actions',
+                      label: 'Actions',
+                      render: (_, row: Expense) => (
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="secondary" onClick={() => handleEdit(row)}>
+                            Edit
+                          </Button>
+                          <Button size="sm" variant="danger" onClick={() => handleDelete(row._id)}>
+                            Delete
+                          </Button>
+                        </div>
+                      ),
+                    },
+                  ]}
+                  data={expenses}
+                />
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="mt-6 flex items-center justify-between">
+                    <p className="text-sm text-gray-600">
+                      Page {currentPage} of {totalPages} • Showing {expenses.length} of {totalExpenses} expenses
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => fetchExpenses(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      {/* Page Numbers */}
+                      <div className="flex gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                          <Button
+                            key={page}
+                            size="sm"
+                            variant={page === currentPage ? 'primary' : 'secondary'}
+                            onClick={() => fetchExpenses(page)}
+                          >
+                            {page}
+                          </Button>
+                        ))}
                       </div>
-                    ),
-                  },
-                ]}
-                data={expenses}
-              />
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => fetchExpenses(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

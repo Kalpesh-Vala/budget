@@ -83,11 +83,11 @@ export async function GET(request: NextRequest) {
         },
       ]),
 
-      // Get recent expenses (limited to 10 for performance)
+      // Get recent expenses (limited to 5 for dashboard)
       Expense.find({ userId: protection.userId, ...matchStage })
         .select('_id category amount description date')
         .sort({ date: -1 })
-        .limit(10)
+        .limit(5)
         .lean(), // Use lean() for faster read-only queries
 
       // Get total spent in the month
