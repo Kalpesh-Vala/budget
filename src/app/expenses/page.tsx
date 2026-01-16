@@ -176,7 +176,6 @@ export default function ExpensesPage() {
 
   const todayExpenses = filterExpensesByDate(expenses, new Date(selectedDate));
   const dayTotal = calculateTotal(todayExpenses);
-  const pageTotal = calculateTotal(expenses); // Total for current page
 
   return (
     <DashboardLayout>
@@ -267,24 +266,14 @@ export default function ExpensesPage() {
           </CardContent>
         </Card>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <div className="text-center">
-              <p className="text-gray-600 dark:text-gray-400 mb-2">Today's Total</p>
-              <p className="text-4xl font-bold text-blue-600">{formatCurrency(dayTotal)}</p>
-              <p className="text-sm text-gray-500 mt-2">{todayExpenses.length} transactions</p>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="text-center">
-              <p className="text-gray-600 dark:text-gray-400 mb-2">Month's Total</p>
-              <p className="text-4xl font-bold text-green-600">{formatCurrency(pageTotal)}</p>
-              <p className="text-sm text-gray-500 mt-2">Page {currentPage}: {expenses.length} expenses (Total: {totalExpenses})</p>
-            </div>
-          </Card>
-        </div>
+        {/* Summary Card */}
+        <Card>
+          <div className="text-center">
+            <p className="text-gray-600 dark:text-gray-400 mb-2">Today's Total</p>
+            <p className="text-4xl font-bold text-blue-600">{formatCurrency(dayTotal)}</p>
+            <p className="text-sm text-gray-500 mt-2">{todayExpenses.length} transactions</p>
+          </div>
+        </Card>
 
         {/* Month Selector */}
         <div className="flex gap-4 items-center">
